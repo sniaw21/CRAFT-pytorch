@@ -53,6 +53,7 @@ parser.add_argument('--mag_ratio', default=1.5, type=float, help='image magnific
 parser.add_argument('--poly', default=False, action='store_true', help='enable polygon type')
 parser.add_argument('--show_time', default=False, action='store_true', help='show processing time')
 parser.add_argument('--test_folder', default='/data/', type=str, help='folder path to input images')
+parser.add_argument('--file_name', default='', type=str, help='filename of test image')
 parser.add_argument('--refine', default=False, action='store_true', help='enable link refiner')
 parser.add_argument('--refiner_model', default='weights/craft_refiner_CTW1500.pth', type=str, help='pretrained refiner model')
 
@@ -61,6 +62,8 @@ args = parser.parse_args()
 
 """ For test images in a folder """
 image_list, _, _ = file_utils.get_files(args.test_folder)
+folder_path = args.test_folder
+file_name = args.file_name
 
 result_folder = './result/'
 if not os.path.isdir(result_folder):
@@ -155,8 +158,22 @@ if __name__ == '__main__':
     t = time.time()
 
     # load data
-    for k, image_path in enumerate(image_list):
-        print("Test image {:d}/{:d}: {:s}".format(k+1, len(image_list), image_path), end='\r')
+    if file_name == "":
+        for k, image_path in enumerate(image_list):
+            print("Test image {:d}/{:d}: {:s}".format(k+1, len(image_list), image_path), end='\r')
+            image = imgproc.loadImage(image_path)
+
+            bboxes, polys, score_text = test_net(net, image, args.text_threshold, args.link_threshold, args.low_text, args.cuda, args.poly, refine_net)
+
+            # save score text
+            filename, file_ext = os.path.splitext(os.path.basename(image_path))
+            mask_file = result_folder + "/res_" + filename + '_mask.jpg'
+            cv2.imwrite(mask_file, score_text)
+
+            file_utils.saveResult(image_path, image[:,:,::-1], polys, dirname=result_folder)
+    else:
+        image_path = folder_path + file_name
+        print("Test image : {:s}".format(image_path), end='\r')
         image = imgproc.loadImage(image_path)
 
         bboxes, polys, score_text = test_net(net, image, args.text_threshold, args.link_threshold, args.low_text, args.cuda, args.poly, refine_net)
